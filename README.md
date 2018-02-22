@@ -1,36 +1,27 @@
 # Orchestrating the Cloud with Kuberenetes
 
-In this Codelab you will learn how to:
+In this lab you will learn how to:
 
-* Provision a complete Kubernetes using [Google Container Engine](https://cloud.google.com/container-engine)
 * Deploy and manage Docker containers using kubectl
 
 Kubernetes Version: 1.2.2
-
-## Setup GCE and Enable Cloud Shell 
-
-In this section you will create a Google Compute Engine (GCE) account. GCE will allow you to the create VMs, Networks, and Storage volumes required for this workshop. GCE also provides the [Cloud Shell](https://cloud.google.com/shell/docs) computing environment that will be used complete the labs.
-
-#### Labs
-
-  * [Create a GCE Account](labs/create-gce-account.md)
-  * [Enable and explore Cloud Shell](labs/enable-and-explore-cloud-shell.md)
 
 ### Clone this Repository
 
 Login into your Cloud Shell environment and clone this repository.
 
 ```
-git clone https://github.com/googlecodelabs/orchestrate-with-kubernetes.git
+$ git clone git@github.com:WesleyCharlesBlake/k8s-demo.git
+$ cd k8s-demo
+$ git checkout orchestrate-k8s
 ```
 
-## Provision Kubernetes using GKE
+## Provision Kubernetes [TODO]
 
 Kubernetes is a distributed system composed of a collection of microservices. Like any system Kubernetes must be installed and configured. In this section you will install Kubernetes from the ground up with the minimal configuration required to get a cluster up and running.
 
-Kubernetes can be configured with many options and add-ons, but can be time consuming to bootstrap from the ground up. In this section you will bootstrap Kubernetes using [Google Container Engine](https://cloud.google.com/container-engine) (GKE).
+Kubernetes can be configured with many options and add-ons, but can be time consuming to bootstrap from the ground up. In this section you will bootstrap Kubernetes using [EKS](https://aws.amazon.com/eks/)
 
-  * [Provision a Kubernetes Cluster with GKE](labs/provision-kubernetes-cluster-with-gke.md)
 
 ## Managing Applications with Kubernetes
 
