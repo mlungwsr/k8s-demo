@@ -1,20 +1,12 @@
-# Lab: Build a Continuous Deployment Pipeline with Jenkins and Kubernetes
-
-For a more in depth best practices guide, go to the solution posted [here](https://cloud.google.com/solutions/jenkins-on-container-engine).
-
-| Test          |   Result      |
-| ------------- |---------------|
-| Tutorial      | ![badge](https://concourse.dev.vicnastea.io/api/v1/teams/main/pipelines/cd-on-k8s-regression/jobs/test-tutorial/badge) |
-| Sample App    | ![badge](https://concourse.dev.vicnastea.io/api/v1/teams/main/pipelines/cd-on-k8s-regression/jobs/build-sample-app/badge)      |
+# Build a Continuous Deployment Pipeline with Jenkins and Kubernetes
 
 ## Introduction
-This guide will take you through the steps necessary to continuously deliver your software to end users by leveraging [Google Container Engine](https://cloud.google.com/container-engine/) and [Jenkins](https://jenkins.io) to orchestrate the software delivery pipeline.
+
 If you are not familiar with basic Kubernetes concepts, have a look at [Kubernetes 101](http://kubernetes.io/docs/user-guide/walkthrough/).
 
 In order to accomplish this goal you will use the following Jenkins plugins:
   - [Jenkins Kubernetes Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Kubernetes+Plugin) - start Jenkins build executor containers in the Kubernetes cluster when builds are requested, terminate those containers when builds complete, freeing resources up for the rest of the cluster
   - [Jenkins Pipelines](https://jenkins.io/solutions/pipeline/) - define our build pipeline declaratively and keep it checked into source code management alongside our application code
-  - [Google Oauth Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Google+OAuth+Plugin) - allows you to add your google oauth credentials to jenkins
 
 In order to deploy the application with [Kubernetes](http://kubernetes.io/) you will use the following resources:
   - [Deployments](http://kubernetes.io/docs/user-guide/deployments/) - replicates our application across our kubernetes nodes and allows us to do a controlled rolling update of our software across the fleet of application instances
@@ -23,51 +15,19 @@ In order to deploy the application with [Kubernetes](http://kubernetes.io/) you 
   - [Secrets](http://kubernetes.io/docs/user-guide/secrets/) - secure storage of non public configuration information, SSL certs specifically in our case
 
 ## Prerequisites
-1. A Google Cloud Platform Account
-1. [Enable the Google Compute Engine and Google Container Engine APIs](https://console.cloud.google.com/flows/enableapi?apiid=compute_component,container)
+1. A working Kubernetes cluster
 
 ## Do this first
-In this section you will start your [Google Cloud Shell](https://cloud.google.com/cloud-shell/docs/) and clone the lab code repository to it.
-
-1. Create a new Google Cloud Platform project: [https://console.developers.google.com/project](https://console.developers.google.com/project)
-
-1. Click the Google Cloud Shell icon in the top-right and wait for your shell to open:
-
-  ![](docs/img/cloud-shell.png)
-
-  ![](docs/img/cloud-shell-prompt.png)
-
-1. When the shell is open, set your default compute zone:
-
-  ```shell
-  $ gcloud config set compute/zone us-east1-d
-  ```
 
 1. Clone the lab repository in your cloud shell, then `cd` into that dir:
 
   ```shell
-  $ git clone https://github.com/GoogleCloudPlatform/continuous-deployment-on-kubernetes.git
+  $ git clone git@github.com:WesleyCharlesBlake/k8s-demo.git
   Cloning into 'continuous-deployment-on-kubernetes'...
   ...
 
-  $ cd continuous-deployment-on-kubernetes
+  $ git checkout -b continuous-deployment-k8s
   ```
-
-## Create a Kubernetes Cluster
-You'll use Google Container Engine to create and manage your Kubernetes cluster. Provision the cluster with `gcloud`:
-
-```shell
-$ gcloud container clusters create jenkins-cd \
-  --num-nodes 3 \
-  --scopes "https://www.googleapis.com/auth/projecthosting,storage-rw"
-```
-
-Once that operation completes download the credentials for your cluster using the [gcloud CLI](https://cloud.google.com/sdk/):
-```shell
-$ gcloud container clusters get-credentials jenkins-cd
-Fetching cluster endpoint and auth data.
-kubeconfig entry generated for jenkins-cd.
-```
 
 Confirm that the cluster is running and `kubectl` is working by listing pods:
 
@@ -83,13 +43,12 @@ Create the `jenkins` namespace:
 $ kubectl create ns jenkins
 ```
 
-### Create the Jenkins Home Volume
+### Create the Jenkins Home Volume [WIP]
 In order to pre-populate Jenkins with the necessary [plugins and configuration](https://cloud.google.com/solutions/configuring-jenkins-container-engine) for the rest of the tutorial, you will create
 a volume from an existing tarball of that data.
 
 ```shell
-gcloud compute images create jenkins-home-image --source-uri https://storage.googleapis.com/solutions-public-assets/jenkins-cd/jenkins-home-v3.tar.gz
-gcloud compute disks create jenkins-home --image jenkins-home-image
+still need to create the volumes for jenkins
 ```
 
 
@@ -210,8 +169,6 @@ Open the load balancer's IP address in your web browser, click "Log in" in the t
 > **Note**: To further secure your instance follow the steps found [here](https://wiki.jenkins-ci.org/display/JENKINS/Securing+Jenkins).
 
 
-![](docs/img/jenkins-login.png)
-
 ### Your progress, and what's next
 You've got a Kubernetes cluster managed by Google Container Engine. You've deployed:
 
@@ -224,7 +181,6 @@ You have the tools to build a continuous deployment pipeline. Now you need a sam
 ## The sample app
 You'll use a very simple sample application - `gceme` - as the basis for your CD pipeline. `gceme` is written in Go and is located in the `sample-app` directory in this repo. When you run the `gceme` binary on a GCE instance, it displays the instance's metadata in a pretty card:
 
-![](docs/img/info_card.png)
 
 The binary supports two modes of operation, designed to mimic a microservice. In backend mode, `gceme` will listen on a port (8080 by default) and return GCE instance metadata as JSON, with content-type=application/json. In frontend mode, `gceme` will query a backend `gceme` service and render that JSON in the UI you saw above. It looks roughly like this:
 
@@ -233,14 +189,14 @@ The binary supports two modes of operation, designed to mimic a microservice. In
 |         |      |          |      |          |        |         |
 |  user   | ---> |   gceme  | ---> | lb/proxy | -----> |  gceme  |
 |(browser)|      |(frontend)|      |(optional)|   |    |(backend)|
-|         |      |          |      |          |   |    |         |
------------      ------------      ~~~~~~~~~~~~   |    -----------
+|     |     |     |     |     |     |     |     |
+| --- |~~~~~~~~~~~~   |    -----------
                                                   |    -----------
                                                   |    |         |
                                                   |--> |  gceme  |
                                                        |(backend)|
-                                                       |         |
-                                                       -----------
+|     |
+| --- |
 ```
 Both the frontend and backend modes of the application support two additional URLs:
 
@@ -311,7 +267,6 @@ Here you'll create your own copy of the `gceme` sample app in [Cloud Source Repo
     ```shell
     $ cd sample-app
     $ git init
-    $ git config credential.helper gcloud.sh
     $ git remote add origin https://source.developers.google.com/p/REPLACE_WITH_YOUR_PROJECT_ID/r/default
     ```
 
@@ -339,7 +294,6 @@ First we will need to configure our GCP credentials in order for Jenkins to be a
 1. In the Jenkins UI, Click “Credentials” on the left
 1. Click either of the “(global)” links (they both route to the same URL)
 1. Click “Add Credentials” on the left
-1. From the “Kind” dropdown, select “Google Service Account from metadata”
 1. Click “OK”
 
 You should now see 2 Global Credentials. Make a note of the name of second credentials as you will reference this in Phase 2:
@@ -396,7 +350,7 @@ Now that your pipeline is working, it's time to make a change to the `gceme` app
 
 The canary environment is rolled out as a percentage of the pods behind the production load balancer.
 In this case we have 1 out of 5 of our frontends running the canary code and the other 4 running the production code. This allows you to ensure that the canary code is not negatively affecting users before rolling out to your full fleet.
-You can use the [labels](http://kubernetes.io/docs/user-guide/labels/) `env: production` and `env: canary` in Google Cloud Monitoring in order to monitor the performance of each version individually.
+You can use the [labels](http://kubernetes.io/docs/user-guide/labels/) `env: production` and `env: canary` in order to monitor the performance of each version individually.
 
 1. In the `sample-app` repository on your workstation open `html.go` and replace the word `blue` with `orange` (there should be exactly two occurrences):
 
@@ -510,7 +464,7 @@ which authenticates itself with the Kubernetes API and proxies requests from you
 
 #### Access the development branch
 
-1. Open a new Google Cloud Shell terminal by clicking the `+` button to the right of the current terminal's tab, and start the proxy:
+1. Open a new terminal and start the proxy:
 
    ```shell
    $ kubectl proxy
@@ -555,9 +509,3 @@ Things to consider:
 * What is the Docker image you want to deploy for roll back?
 * How can you interact directly with the Kubernetes to trigger the deployment?
 * Is SRE really what you want to do with your life?
-
-## Clean up
-Clean up is really easy, but also super important: if you don't follow these instructions, you will continue to be billed for the Google Container Engine cluster you created.
-
-To clean up, navigate to the [Google Developers Console Project List](https://console.developers.google.com/project), choose the project you created for this lab, and delete it. That's it.
-
